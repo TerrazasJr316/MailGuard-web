@@ -1,18 +1,27 @@
+# app.py
+
 import streamlit as st
 import matplotlib.pyplot as plt
-import setup # <-- IMPORTANTE: Importamos el nuevo script de configuración
-import model_trainer
+import numpy as np
+from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
+import model_trainer # Importamos nuestro script de lógica
 
-# --- Configuración Inicial del Entorno ---
-# Esta función se ejecutará solo una vez para descargar y preparar el dataset.
+# --- Configuración de la Página de Streamlit ---
+st.set_page_config(
+    page_title="Detector de SPAM con Regresión Logística",
+    page_icon="📧",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --- Función para descargar datos de NLTK (se cachea para no descargar cada vez) ---
 @st.cache_resource
-def initial_setup():
-    """Llama a la función de descarga y descompresión del dataset."""
-    setup.download_and_unzip()
+def setup_nltk():
+    """Descarga los datos necesarios de NLTK."""
     model_trainer.download_nltk_data()
 
-# Ejecutar la configuración al inicio de la app
-initial_setup()
+# Llamar a la función de configuración al inicio
+setup_nltk()
 
 # --- Título y Descripción de la Aplicación ---
 st.title("📧 Detector de SPAM con Regresión Logística")
@@ -51,15 +60,18 @@ Las métricas se calculan sobre un conjunto de prueba fijo de **2000 correos** q
 # --- Barra Lateral de Opciones (Sidebar) ---
 with st.sidebar:
     st.header("⚙️ Parámetros del Modelo")
-    # Reducimos el máximo para evitar agotar la memoria en el plan gratuito de Render
+    
+    # Slider para que el usuario elija el número de muestras de entrenamiento
     num_samples = st.slider(
         "Número de correos para entrenar:",
         min_value=1000,
-        max_value=15000, # Límite más seguro para el plan gratuito
-        value=8000,
+        max_value=20000,
+        value=10000,  # Valor por defecto que da un buen F1-Score
         step=1000,
-        help="Un número mayor mejora la precisión pero tarda más y consume más memoria."
+        help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor puede mejorar la precisión pero tardará más en procesar."
     )
+
+    # Botón para iniciar el entrenamiento
     train_button = st.button("🚀 Entrenar y Evaluar Modelo", type="primary", use_container_width=True)
     
     st.markdown("---")
@@ -84,55 +96,118 @@ with st.sidebar:
             """)
 
 # --- Lógica Principal de la Aplicación ---
+
+# Placeholder para mostrar los resultados después del entrenamiento
 results_placeholder = st.empty()
 
 if train_button:
+    
+    # Usar el placeholder para mostrar el proceso y los resultados
     with results_placeholder.container():
+        # Mensaje explicativo sobre el conteo total de correos
         total_to_process = num_samples + 2000
         st.info(f"Iniciando proceso... Se cargarán y procesarán **{total_to_process}** correos en total ({num_samples} para entrenar y 2000 para probar).")
         
-        st.header(f"Resultados para un entrenamiento con {num_samples} correos")
+        st.header(f"Resultados de Entrenamiento con {num_samples} correos")
         
+        # Usar un spinner para mostrar que el proceso está en marcha
         progress_bar = st.progress(0, text="Iniciando proceso...")
-        
+        status_text = st.empty()
+
         def update_status(message, progress):
+            """Función de callback para actualizar la UI desde el trainer."""
+            status_text.text(message)
             progress_bar.progress(progress, text=message)
 
         try:
+            # Llamar a la función principal de nuestro módulo de entrenamiento
             results = model_trainer.train_and_evaluate(
                 num_training_samples=num_samples,
                 status_callback=update_status
             )
             
+            # --- Mostrar Métricas Clave en columnas ---
             st.subheader("📊 Métricas de Rendimiento")
             col1, col2 = st.columns(2)
-            col1.metric(label="✅ Accuracy", value=f"{results['accuracy']:.3f}")
-            col2.metric(label="🎯 F1-Score (SPAM)", value=f"{results['f1_score']:.3f}")
+            
+            # Métrica de Accuracy
+            col1.metric(
+                label="✅ Accuracy (Precisión Global)",
+                value=f"{results['accuracy']:.3f}",
+                help="Porcentaje de predicciones correctas sobre el total de correos de prueba."
+            )
+            
+            # Métrica de F1-Score
+            f1_color = "normal" if results['f1_score'] > 0.95 else "inverse"
+            col2.metric(
+                label="🎯 F1-Score (SPAM)",
+                value=f"{results['f1_score']:.3f}",
+                help="Media armónica de Precisión y Recall. Es la métrica más importante para SPAM, ya que balancea los falsos positivos y negativos.",
+                delta_color=f1_color
+            )
             
             st.markdown("---")
+            
+            # --- Mostrar Visualizaciones ---
             st.subheader("📈 Visualizaciones del Modelo")
             
+            # Crear columnas para los gráficos
             fig_col1, fig_col2 = st.columns(2)
             
             with fig_col1:
                 st.markdown("#### Matriz de Confusión")
                 fig, ax = plt.subplots(figsize=(6, 5))
-                plt.show()
-
+                ConfusionMatrixDisplay(
+                    confusion_matrix=results['confusion_matrix'],
+                    display_labels=results['classes']
+                ).plot(ax=ax, cmap='Blues', values_format='d')
+                ax.set_title("Rendimiento en el set de prueba")
+                st.pyplot(fig)
+                st.markdown("""
+                - **Verdaderos Positivos (VP)**: SPAM real, predicho como SPAM.
+                - **Verdaderos Negativos (VN)**: HAM real, predicho como HAM.
+                - **Falsos Positivos (FP)**: HAM real, predicho como SPAM (¡Error grave!).
+                - **Falsos Negativos (FN)**: SPAM real, predicho como HAM.
+                """)
+            
             with fig_col2:
                 st.markdown("#### Curva ROC")
                 fig_roc, ax_roc = plt.subplots(figsize=(6, 5))
-                plt.show()
-
+                RocCurveDisplay.from_estimator(
+                    results['classifier'],
+                    results['X_test'],
+                    results['y_test'],
+                    ax=ax_roc,
+                    pos_label='spam'
+                )
+                ax_roc.set_title("Capacidad de Discriminación")
+                st.pyplot(fig_roc)
+                st.markdown("""
+                Muestra la capacidad del modelo para distinguir entre clases. Un área bajo la curva (AUC) cercana a 1.0 indica un excelente rendimiento.
+                """)
+                
             st.markdown("#### Curva de Precisión-Recall (PR)")
-            fig_pr, ax_pr = plt.subplots(figsize=(10, 5))
-            plt.show()
+            fig_pr, ax_pr = plt.subplots(figsize=(6, 5))
+            PrecisionRecallDisplay.from_estimator(
+                results['classifier'],
+                results['X_test'],
+                results['y_test'],
+                ax=ax_pr,
+                pos_label='spam'
+            )
+            ax_pr.set_title("Balance entre Precisión y Recall")
+            st.pyplot(fig_pr)
+            st.markdown("""
+            Esta curva es útil cuando las clases están desbalanceadas. Muestra el balance entre la **precisión** (qué tan acertadas son las predicciones de SPAM) y el **recall** (cuántos de los SPAM reales se detectaron).
+            """)
             
             st.success("¡El modelo fue entrenado y evaluado con éxito!")
             
         except Exception as e:
             st.error(f"Ocurrió un error durante el proceso: {e}")
+            st.error("Asegúrate de que la carpeta 'ALERT' con los datasets esté en el directorio correcto y que el archivo de índice no esté corrupto.")
 
 else:
+    # Mensaje inicial antes de presionar el botón
     with results_placeholder.container():
-        st.info("Configura los parámetros en la barra lateral y presiona 'Entrenar y Evaluar' para comenzar.")
+        st.info("Configura los parámetros en la barra lateral y presiona 'Entrenar y Evaluar Modelo' para comenzar.")
