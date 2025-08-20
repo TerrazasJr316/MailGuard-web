@@ -17,7 +17,7 @@ st.set_page_config(
 # --- Función para descargar datos de NLTK (se cachea para no descargar cada vez) ---
 #@st.cache_resource
 #def setup_nltk():
-    """Descarga los datos necesarios de NLTK."""
+#    """Descarga los datos necesarios de NLTK."""
 #    model_trainer.download_nltk_data()
 
 # Llamar a la función de configuración al inicio
