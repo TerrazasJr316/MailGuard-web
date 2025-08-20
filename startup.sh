@@ -1,29 +1,17 @@
 #!/bin/bash
+set -e
 
-# Pega aquí la URL que copiaste de GitHub Releases
-DATASET_URL="https://github.com/TerrazasJr316/MailGuard-web/releases/download/v1.0.1-dataset/ALERT.zip"
+# Pega aquí la NUEVA URL de tu archivo .pkl
+DATASET_URL="https://github.com/TerrazasJr316/MailGuard-web/releases/download/v2.0-data/preprocessed_spam_data.pkl"
 
-# 1. Revisa si la carpeta del dataset ya existe.
-#    Esto evita volver a descargarla si el servicio solo se reinicia.
-if [ ! -d "ALERT" ]; then
-    echo "Carpeta ALERT no encontrada. Descargando dataset..."
-
-    # 2. Descarga el archivo .zip usando la URL.
-    #    La opción -L es importante para que siga las redirecciones de GitHub.
-    curl -L $DATASET_URL -o ALERT.zip
-
-    # 3. Descomprime el archivo.
-    echo "Descomprimiendo dataset..."
-    unzip ALERT.zip
-
-    # 4. (Opcional) Limpia el archivo .zip para ahorrar espacio.
-    rm ALERT.zip
-
-    echo "Dataset listo."
+# Revisa si el archivo de datos ya existe
+if [ ! -f "preprocessed_spam_data.pkl" ]; then
+    echo "Dataset preprocesado no encontrado. Descargando..."
+    curl -L $DATASET_URL -o preprocessed_spam_data.pkl
+    echo "Descarga completa."
 else
-    echo "La carpeta ALERT ya existe. Saltando descarga."
+    echo "Dataset preprocesado ya existe."
 fi
 
-# 5. Finalmente, ejecuta la aplicación de Streamlit.
-#    Este comando le dice a Streamlit que se ejecute en el puerto que Render le asigne.
+echo "Iniciando la aplicación..."
 streamlit run app.py --server.port $PORT
