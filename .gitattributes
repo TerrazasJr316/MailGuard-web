@@ -1,1 +1,0 @@
-ALERT/datasets/trec07p/data/**/* filter=lfs diff=lfs merge=lfs -text
