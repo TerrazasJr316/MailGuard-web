@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Pega aquí la URL que copiaste de GitHub Releases
-DATASET_URL="https://github.com/TerrazasJr316/MailGuard-web/releases/download/v1.0.0/ALERT.zip"
-
+DATASET_URL="https://drive.google.com/drive/folders/1FhUnL1ztagpWdLj04n0Tb0I9ZNm_ZF2s?usp=sharing"
 # 1. Revisa si la carpeta del dataset ya existe.
 #    Esto evita volver a descargarla si el servicio solo se reinicia.
 if [ ! -d "ALERT" ]; then
