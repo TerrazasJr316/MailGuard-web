@@ -13,16 +13,16 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
+"""
 # --- Función para descargar datos de NLTK (se cachea para no descargar cada vez) ---
 @st.cache_resource
 def setup_nltk():
-    """Descarga los datos necesarios de NLTK."""
+    'Descarga los datos necesarios de NLTK.'
     model_trainer.download_nltk_data()
 
 # Llamar a la función de configuración al inicio
 setup_nltk()
-
+"""
 # --- Título y Descripción de la Aplicación ---
 st.title("📧 Detector de SPAM con Regresión Logística")
 st.markdown("""
@@ -65,8 +65,8 @@ with st.sidebar:
     num_samples = st.slider(
         "Número de correos para entrenar:",
         min_value=1000,
-        max_value=20000,
-        value=10000,  # Valor por defecto que da un buen F1-Score
+        max_value=50000, # Ajustado al tamaño del dataset
+        value=10000,
         step=1000,
         help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor puede mejorar la precisión pero tardará más en procesar."
     )
@@ -76,41 +76,17 @@ with st.sidebar:
     
     st.markdown("---")
     st.info("""
-            Se propone la contrucción de aprendizaje automático capaz de predecir si un correo determinado se SPAM o no, para esto se utilizará el siguiente DataSet (Conjunto de Datos):
-
-            2007 TREC Public Spam Corpurs
-            
-            The corpus trec07p contains 75,419 messages:
-
-            25220 ham
-            
-            50199 spam
-            
-            These messages constitute all the messages delivered to a particular server between these dates:
-
-            Sun, 8 Apr 2007 13:07:21 -0400
-            
-            Fri, 6 Jul 2007 07:04:53 -0400
-            
-            Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**.
+            Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**, que fue preprocesado localmente para un rendimiento óptimo en la nube.
             """)
 
 # --- Lógica Principal de la Aplicación ---
-
-# Placeholder para mostrar los resultados después del entrenamiento
 results_placeholder = st.empty()
 
 if train_button:
-    
-    # Usar el placeholder para mostrar el proceso y los resultados
     with results_placeholder.container():
-        # Mensaje explicativo sobre el conteo total de correos
-        total_to_process = num_samples + 2000
-        st.info(f"Iniciando proceso... Se cargarán y procesarán **{total_to_process}** correos en total ({num_samples} para entrenar y 2000 para probar).")
-        
+        st.info(f"Iniciando proceso con **{num_samples}** correos de entrenamiento y 2000 de prueba.")
         st.header(f"Resultados de Entrenamiento con {num_samples} correos")
         
-        # Usar un spinner para mostrar que el proceso está en marcha
         progress_bar = st.progress(0, text="Iniciando proceso...")
         status_text = st.empty()
 
@@ -120,38 +96,30 @@ if train_button:
             progress_bar.progress(progress, text=message)
 
         try:
-            # Llamar a la función principal de nuestro módulo de entrenamiento
             results = model_trainer.train_and_evaluate(
                 num_training_samples=num_samples,
                 status_callback=update_status
             )
             
-            # --- Mostrar Métricas Clave en columnas ---
             st.subheader("📊 Métricas de Rendimiento")
             col1, col2 = st.columns(2)
             
-            # Métrica de Accuracy
             col1.metric(
                 label="✅ Accuracy (Precisión Global)",
-                value=f"{results['accuracy']:.3f}",
-                help="Porcentaje de predicciones correctas sobre el total de correos de prueba."
+                value=f"{results['accuracy']:.3f}"
             )
             
-            # Métrica de F1-Score
             f1_color = "normal" if results['f1_score'] > 0.95 else "inverse"
             col2.metric(
                 label="🎯 F1-Score (SPAM)",
                 value=f"{results['f1_score']:.3f}",
-                help="Media armónica de Precisión y Recall. Es la métrica más importante para SPAM, ya que balancea los falsos positivos y negativos.",
+                help="Métrica clave que balancea falsos positivos y negativos.",
                 delta_color=f1_color
             )
             
             st.markdown("---")
-            
-            # --- Mostrar Visualizaciones ---
             st.subheader("📈 Visualizaciones del Modelo")
             
-            # Crear columnas para los gráficos
             fig_col1, fig_col2 = st.columns(2)
             
             with fig_col1:
@@ -163,12 +131,6 @@ if train_button:
                 ).plot(ax=ax, cmap='Blues', values_format='d')
                 ax.set_title("Rendimiento en el set de prueba")
                 st.pyplot(fig)
-                st.markdown("""
-                - **Verdaderos Positivos (VP)**: SPAM real, predicho como SPAM.
-                - **Verdaderos Negativos (VN)**: HAM real, predicho como HAM.
-                - **Falsos Positivos (FP)**: HAM real, predicho como SPAM (¡Error grave!).
-                - **Falsos Negativos (FN)**: SPAM real, predicho como HAM.
-                """)
             
             with fig_col2:
                 st.markdown("#### Curva ROC")
@@ -182,10 +144,7 @@ if train_button:
                 )
                 ax_roc.set_title("Capacidad de Discriminación")
                 st.pyplot(fig_roc)
-                st.markdown("""
-                Muestra la capacidad del modelo para distinguir entre clases. Un área bajo la curva (AUC) cercana a 1.0 indica un excelente rendimiento.
-                """)
-                
+
             st.markdown("#### Curva de Precisión-Recall (PR)")
             fig_pr, ax_pr = plt.subplots(figsize=(6, 5))
             PrecisionRecallDisplay.from_estimator(
@@ -197,17 +156,13 @@ if train_button:
             )
             ax_pr.set_title("Balance entre Precisión y Recall")
             st.pyplot(fig_pr)
-            st.markdown("""
-            Esta curva es útil cuando las clases están desbalanceadas. Muestra el balance entre la **precisión** (qué tan acertadas son las predicciones de SPAM) y el **recall** (cuántos de los SPAM reales se detectaron).
-            """)
             
             st.success("¡El modelo fue entrenado y evaluado con éxito!")
             
         except Exception as e:
             st.error(f"Ocurrió un error durante el proceso: {e}")
-            st.error("Asegúrate de que la carpeta 'ALERT' con los datasets esté en el directorio correcto y que el archivo de índice no esté corrupto.")
+            st.error("Asegúrate de que el archivo 'preprocessed_spam_data.pkl' se haya descargado correctamente.")
 
 else:
-    # Mensaje inicial antes de presionar el botón
     with results_placeholder.container():
         st.info("Configura los parámetros en la barra lateral y presiona 'Entrenar y Evaluar Modelo' para comenzar.")
