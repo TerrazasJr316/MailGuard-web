@@ -2,3 +2,4 @@
 __pycache__/
 venv/
 ALERT.zip
+preprocessed_spam_data.pkl
