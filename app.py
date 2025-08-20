@@ -13,16 +13,16 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-"""
+
 # --- Función para descargar datos de NLTK (se cachea para no descargar cada vez) ---
-@st.cache_resource
-def setup_nltk():
-    'Descarga los datos necesarios de NLTK.'
-    model_trainer.download_nltk_data()
+#@st.cache_resource
+#def setup_nltk():
+    """Descarga los datos necesarios de NLTK."""
+#    model_trainer.download_nltk_data()
 
 # Llamar a la función de configuración al inicio
-setup_nltk()
-"""
+#setup_nltk()
+
 # --- Título y Descripción de la Aplicación ---
 st.title("📧 Detector de SPAM con Regresión Logística")
 st.markdown("""
@@ -76,9 +76,26 @@ with st.sidebar:
     
     st.markdown("---")
     st.info("""
-            Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**, que fue preprocesado localmente para un rendimiento óptimo en la nube.
-            """)
 
+            Se propone la contrucción de aprendizaje automático capaz de predecir si un correo determinado se SPAM o no, para esto se utilizará el siguiente DataSet (Conjunto de Datos):
+
+            2007 TREC Public Spam Corpurs
+            
+            The corpus trec07p contains 75,419 messages:
+
+            25220 ham
+            
+            50199 spam
+            
+            These messages constitute all the messages delivered to a particular server between these dates:
+
+            Sun, 8 Apr 2007 13:07:21 -0400
+            
+            Fri, 6 Jul 2007 07:04:53 -0400
+            
+            Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**.
+            """)
+    
 # --- Lógica Principal de la Aplicación ---
 results_placeholder = st.empty()
 
