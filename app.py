@@ -1,8 +1,5 @@
-# app.py
-
 import streamlit as st
 import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
 import model_trainer # Importamos nuestro script de lógica actualizado
 
@@ -61,17 +58,15 @@ Las métricas se calculan sobre un conjunto de prueba fijo de **2000 correos** q
 with st.sidebar:
     st.header("⚙️ Parámetros del Modelo")
     
-    # Slider para que el usuario elija el número de muestras de entrenamiento
     num_samples = st.slider(
         "Número de correos para entrenar:",
         min_value=1000,
-        max_value=73000, # El dataset tiene ~75k, dejamos 2k para pruebas
+        max_value=73000,
         value=10000,
         step=1000,
-        help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor mejora la precisión pero puede tardar un poco más en procesar."
+        help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor mejora la precisión pero puede tardar un poco más."
     )
 
-    # Botón para iniciar el entrenamiento
     train_button = st.button("🚀 Entrenar y Evaluar Modelo", type="primary", use_container_width=True)
     
     st.markdown("---")
@@ -95,13 +90,13 @@ with st.sidebar:
             
             Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**.
             """)
+
 # --- Lógica Principal de la Aplicación ---
 results_placeholder = st.empty()
 
 if train_button:
     with results_placeholder.container():
         st.info(f"Iniciando proceso con **{num_samples:,}** correos de entrenamiento y 2,000 de prueba.")
-        st.header(f"Resultados de Entrenamiento con {num_samples:,} correos")
         
         progress_bar = st.progress(0, text="Iniciando proceso...")
         status_text = st.empty()
@@ -112,13 +107,14 @@ if train_button:
             progress_bar.progress(progress, text=message)
 
         try:
-            # Llamada a la función actualizada en model_trainer
             results = model_trainer.train_and_evaluate(
                 num_training_samples=num_samples,
                 status_callback=update_status
             )
             
+            st.header(f"Resultados de Entrenamiento con {num_samples:,} correos")
             st.subheader("📊 Métricas de Rendimiento")
+            
             col1, col2 = st.columns(2)
             
             # Métrica de Accuracy con formato mejorado
@@ -127,12 +123,12 @@ if train_button:
                 value=f"{results['accuracy']:.4f} ({results['accuracy']:.2%})"
             )
             
-            # Métrica de F1-Score con formato mejorado
+            # Métrica de F1-Score con formato mejorado y control de color
             f1_color = "normal" if results['f1_score'] >= 0.98 else "inverse"
             col2.metric(
                 label="🎯 F1-Score (SPAM)",
                 value=f"{results['f1_score']:.4f} ({results['f1_score']:.2%})",
-                help="Métrica clave que balancea falsos positivos y negativos. Un valor alto es excelente.",
+                help="Métrica clave que balancea falsos positivos y negativos. El objetivo es mantenerlo > 98%.",
                 delta_color=f1_color
             )
             
@@ -165,8 +161,9 @@ if train_button:
                 st.pyplot(fig_roc)
 
             # Curva de Precisión-Recall en una nueva fila para mejor visualización
+            st.markdown("---")
             st.markdown("#### Curva de Precisión-Recall (PR)")
-            fig_pr, ax_pr = plt.subplots(figsize=(7, 5)) # Un poco más ancha para claridad
+            fig_pr, ax_pr = plt.subplots(figsize=(8, 5)) # Un poco más ancha para claridad
             PrecisionRecallDisplay.from_estimator(
                 results['classifier'],
                 results['X_test'],
@@ -181,7 +178,7 @@ if train_button:
             
         except Exception as e:
             st.error(f"Ocurrió un error durante el proceso: {e}")
-            st.error("Asegúrate de que el archivo 'preprocessed_spam_data.pkl' exista en el repositorio.")
+            st.error("Asegúrate de que el archivo 'preprocessed_spam_data.pkl' exista en el repositorio o se pueda descargar.")
 
 else:
     with results_placeholder.container():
