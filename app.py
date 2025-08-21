@@ -4,7 +4,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
-import model_trainer # Importamos nuestro script de lógica
+import model_trainer # Importamos nuestro script de lógica actualizado
 
 # --- Configuración de la Página de Streamlit ---
 st.set_page_config(
@@ -65,10 +65,10 @@ with st.sidebar:
     num_samples = st.slider(
         "Número de correos para entrenar:",
         min_value=1000,
-        max_value=50000, # Ajustado al tamaño del dataset
+        max_value=73000, # El dataset tiene ~75k, dejamos 2k para pruebas
         value=10000,
         step=1000,
-        help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor puede mejorar la precisión pero tardará más en procesar."
+        help="Selecciona la cantidad de datos para el entrenamiento. Un número mayor mejora la precisión pero puede tardar un poco más en procesar."
     )
 
     # Botón para iniciar el entrenamiento
@@ -95,14 +95,13 @@ with st.sidebar:
             
             Esta app fue creada como demostración a partir de cuadernos de Jupyter. El dataset utilizado es el **TREC 2007 Spam Corpus**.
             """)
-    
 # --- Lógica Principal de la Aplicación ---
 results_placeholder = st.empty()
 
 if train_button:
     with results_placeholder.container():
-        st.info(f"Iniciando proceso con **{num_samples}** correos de entrenamiento y 2000 de prueba.")
-        st.header(f"Resultados de Entrenamiento con {num_samples} correos")
+        st.info(f"Iniciando proceso con **{num_samples:,}** correos de entrenamiento y 2,000 de prueba.")
+        st.header(f"Resultados de Entrenamiento con {num_samples:,} correos")
         
         progress_bar = st.progress(0, text="Iniciando proceso...")
         status_text = st.empty()
@@ -113,6 +112,7 @@ if train_button:
             progress_bar.progress(progress, text=message)
 
         try:
+            # Llamada a la función actualizada en model_trainer
             results = model_trainer.train_and_evaluate(
                 num_training_samples=num_samples,
                 status_callback=update_status
@@ -121,16 +121,18 @@ if train_button:
             st.subheader("📊 Métricas de Rendimiento")
             col1, col2 = st.columns(2)
             
+            # Métrica de Accuracy con formato mejorado
             col1.metric(
                 label="✅ Accuracy (Precisión Global)",
-                value=f"{results['accuracy']:.3f}"
+                value=f"{results['accuracy']:.4f} ({results['accuracy']:.2%})"
             )
             
-            f1_color = "normal" if results['f1_score'] > 0.95 else "inverse"
+            # Métrica de F1-Score con formato mejorado
+            f1_color = "normal" if results['f1_score'] >= 0.98 else "inverse"
             col2.metric(
                 label="🎯 F1-Score (SPAM)",
-                value=f"{results['f1_score']:.3f}",
-                help="Métrica clave que balancea falsos positivos y negativos.",
+                value=f"{results['f1_score']:.4f} ({results['f1_score']:.2%})",
+                help="Métrica clave que balancea falsos positivos y negativos. Un valor alto es excelente.",
                 delta_color=f1_color
             )
             
@@ -141,13 +143,13 @@ if train_button:
             
             with fig_col1:
                 st.markdown("#### Matriz de Confusión")
-                fig, ax = plt.subplots(figsize=(6, 5))
+                fig_cm, ax_cm = plt.subplots(figsize=(6, 5))
                 ConfusionMatrixDisplay(
                     confusion_matrix=results['confusion_matrix'],
                     display_labels=results['classes']
-                ).plot(ax=ax, cmap='Blues', values_format='d')
-                ax.set_title("Rendimiento en el set de prueba")
-                st.pyplot(fig)
+                ).plot(ax=ax_cm, cmap='Blues', values_format='d')
+                ax_cm.set_title("Rendimiento en el set de prueba")
+                st.pyplot(fig_cm)
             
             with fig_col2:
                 st.markdown("#### Curva ROC")
@@ -162,8 +164,9 @@ if train_button:
                 ax_roc.set_title("Capacidad de Discriminación")
                 st.pyplot(fig_roc)
 
+            # Curva de Precisión-Recall en una nueva fila para mejor visualización
             st.markdown("#### Curva de Precisión-Recall (PR)")
-            fig_pr, ax_pr = plt.subplots(figsize=(6, 5))
+            fig_pr, ax_pr = plt.subplots(figsize=(7, 5)) # Un poco más ancha para claridad
             PrecisionRecallDisplay.from_estimator(
                 results['classifier'],
                 results['X_test'],
@@ -178,7 +181,7 @@ if train_button:
             
         except Exception as e:
             st.error(f"Ocurrió un error durante el proceso: {e}")
-            st.error("Asegúrate de que el archivo 'preprocessed_spam_data.pkl' se haya descargado correctamente.")
+            st.error("Asegúrate de que el archivo 'preprocessed_spam_data.pkl' exista en el repositorio.")
 
 else:
     with results_placeholder.container():
