@@ -1,5 +1,6 @@
-**ALERT/
+ALERT/
 __pycache__/
 venv/
 ALERT.zip
 preprocessed_spam_data.pkl
+.gitignore
